@@ -89,17 +89,20 @@ pt_admits = admissions.filter(col("HOSPITAL_EXPIRE_FLAG") == 0).drop(
     col("age_at_admit") >= 18
 ).drop("DOB", "ADMITTIME", "age_at_admit_raw")
 
-# Join admits with last ICU stay, calculate remaining LOS post-ICU discharge
+# Join admits with last ICU stay, calculate total LOS and remaining LOS post-ICU discharge
 pt_icu_admits = pt_admits.join(
     last_icustay.drop("SUBJECT_ID"),
     "HADM_ID",
     how="left"
 ).drop("ICUSTAY_ID").withColumn(
     "posticu_los",
-    F.datediff(col("DISCHTIME"), col("OUTTIME"))
+    (F.to_timestamp(col("DISCHTIME")).cast("long") - F.to_timestamp(col("OUTTIME")).cast("long"))/60.0/60.0/24.0
+).withColumn(
+    "total_los",
+    (F.to_timestamp(col("DISCHTIME")).cast("long") - F.to_timestamp(col("ADMITTIME")).cast("long"))/60.0/60.0/24.0
 ).filter(
     col("posticu_los").isNotNull()
-).drop("OUTTIME", "DISCHTIME")
+).drop("ADMITTIME", "OUTTIME", "DISCHTIME")
 
 # Join with diagnoses
 pt_icu_admits_dxs = pt_icu_admits.join(
