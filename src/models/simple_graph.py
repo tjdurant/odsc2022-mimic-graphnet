@@ -2,8 +2,9 @@
 # neomodel models to reprsent the LOS data in Neo4J
 ####################################################
 
+from multiprocessing.dummy import Array
 from neomodel import (ArrayProperty, RelationshipFrom, RelationshipTo,
-                      StringProperty, FloatProperty, StructuredNode)
+                      StringProperty, IntegerProperty, StructuredNode)
 
 
 class Visit(StructuredNode):
@@ -11,20 +12,23 @@ class Visit(StructuredNode):
     embedding = ArrayProperty()
 
     sex = StringProperty()
+    sex_encoded = ArrayProperty()
     race = StringProperty()
+    race_encoded = ArrayProperty()
     age = StringProperty()
-
-    #sex = RelationshipTo("Sex", "of_sex")
+    age_encoded = ArrayProperty()
+    
     care_site = RelationshipTo("CareSite", "visit_site")
-    #race = RelationshipTo("Race", "visit_race")
-    #age = RelationshipTo("Age", "age_at_visit")
-
     dx = RelationshipTo("Diagnosis", "has_medical_hx")
 
 
 class Diagnosis(StructuredNode):
     icd = StringProperty(unique_index=True)
     embedding = ArrayProperty()
+
+    sex_encoded = ArrayProperty()
+    race_encoded = ArrayProperty()
+    age_encoded = ArrayProperty()
 
     child_dx = RelationshipFrom("Diagnosis", "has_parent_dx")
     parent_dx = RelationshipTo("Diagnosis", "has_parent_dx")
@@ -55,5 +59,9 @@ class Diagnosis(StructuredNode):
 class CareSite(StructuredNode):
     site_id = StringProperty(unique_index=True)
     embedding = ArrayProperty()
+
+    sex_encoded = ArrayProperty()
+    race_encoded = ArrayProperty()
+    age_encoded = ArrayProperty()
 
     visits = RelationshipFrom("Visit", "visit_site")

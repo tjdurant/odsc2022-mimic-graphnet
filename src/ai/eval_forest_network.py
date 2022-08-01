@@ -37,7 +37,11 @@ def run(csv_path, seed=42):
 
             # Get visit ID and LOS label
             visit_id = entry[0]
-            los_over = entry[5]
+            posticu_los = float(entry[6])
+            total_los = float(entry[7])
+            los_over = "0"
+            if total_los >= 6:
+                los_over = "1"
 
             # Get visit node from Neo4j so we can get the embedding
             visit = Visit.nodes.get(visit_id = visit_id)
@@ -49,6 +53,14 @@ def run(csv_path, seed=42):
 
     # splitting 80:20
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    print(f"Running RF classifier with:")
+    print(f"\tX_train: {len(X_train)}")
+    print(f"\tY_train: {len(y_train)}")
+
+    print(f"\tX_test: {len(X_test)}")
+    print(f"\tY_test: {len(y_test)}")
+    print("\n")
 
     # training RF
     clf = RandomForestClassifier(
@@ -70,6 +82,6 @@ def run(csv_path, seed=42):
     print("\n")
     print(f"TN: {tn} TP: {tp} FN: {fn} FP: {fp}")
     print("\n")
-    print(classification_report(y_test, y_pred, target_names=["LOS<6", "LOS>6"]))
+    print(classification_report(y_test, y_pred, target_names=["LOS<6", "LOS>=6"]))
 
     return(roc_auc_score(y_test, clf.predict_proba(X_test)[:,1]))
