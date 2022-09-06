@@ -6,7 +6,8 @@ from pyspark.sql.functions import col
 
 
 # Create spark session, should load any necessary config per your environment requirements
-spark = SparkSession("mimic-extractor")
+# spark = SparkSession("mimic-extractor")
+spark = SparkSession.builder.getOrCreate()
 
 # Set base path to MIMIC data here. If driver/config loaded, will work with
 # cloud storage endpoints as well
@@ -87,7 +88,7 @@ pt_admits = admissions.filter(col("HOSPITAL_EXPIRE_FLAG") == 0).drop(
     )
 ).filter(
     col("age_at_admit") >= 18
-).drop("DOB", "ADMITTIME", "age_at_admit_raw")
+).drop("DOB", "age_at_admit_raw")
 
 # Join admits with last ICU stay, calculate total LOS and remaining LOS post-ICU discharge
 pt_icu_admits = pt_admits.join(

@@ -140,3 +140,8 @@ cython_debug/
 # VSCode
 .vscode
 data/
+mimic-posticu-los/
+
+# MacOS
+.DS_Store
+
