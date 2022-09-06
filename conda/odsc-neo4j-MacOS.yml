@@ -87,11 +87,13 @@ dependencies:
     - ptyprocess==0.7.0
     - pure-eval==0.2.2
     - py2neo==2021.2.3
+    - py4j==0.10.9.5
     - pyarrow==9.0.0
     - pycparser==2.21
     - pygments==2.13.0
     - pyparsing==3.0.9
     - pyrsistent==0.18.1
+    - pyspark==3.3.0
     - python-dateutil==2.8.2
     - pytz==2022.2.1
     - pyzmq==23.2.1
