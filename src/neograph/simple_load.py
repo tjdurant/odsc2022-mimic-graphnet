@@ -9,6 +9,9 @@ import os
 
 from models.simple_graph import *
 from tqdm import tqdm
+from neomodel import db
+from sklearn.preprocessing import OneHotEncoder
+import numpy as np
 
 
 class SimpleGraph:
@@ -46,6 +49,37 @@ class SimpleGraph:
                 for line in mimic_data:
                     num_lines += 1
 
+            diagnosis_counts = {}
+            top_x_diagnoses = []
+            # Reopen file for processing
+            with open(csv_path) as mimic_data:
+                header = []
+
+                i = 0
+                for line in tqdm(mimic_data, total=num_lines, desc="Loading data..."):
+                    i += 1
+                    # Strip newlines, remote quotes from strings, and split CSV
+                    entry = line.strip().replace('"', "").split(",")
+                    
+                    # Get field names from header
+                    if i == 1:
+                        header = entry
+                        continue # Since header, now move on to read/process data
+                    
+                    diagnoses = entry[7].split(";")
+                    for diagnosis in diagnoses:
+                        if diagnosis not in diagnosis_counts:
+                            diagnosis_counts[diagnosis] = 0
+                        diagnosis_counts[diagnosis] += 1
+
+            dict(sorted(diagnosis_counts.items(), key=lambda item: item[1]), reversed=True)
+            i = 0
+            for k,v in diagnosis_counts.items():
+                i += 1
+                if i > 101:
+                    break
+                top_x_diagnoses.append(k)
+
             # Reopen file for processing
             with open(csv_path) as mimic_data:
                 header = []
@@ -63,35 +97,35 @@ class SimpleGraph:
                     
                     # When a data row, get variables and add to Neo4J via neomodel
                     visit_id = entry[0]
-                    sex = entry[1]
-                    care_site = entry[2]
-                    race = entry[3]
-                    age = entry[4]
+                    subject_id = entry[1]
+                    race = entry[2]
+                    sex = entry[3]
+                    age = float(entry[4])
+                    care_site = entry[5]
+                    diagnoses = entry[8].split(";")
 
-                    # sex_node = Sex.get_or_create(
-                    #     {
-                    #         "label": sex.lower()
-                    #     }
-                    # )
+                    age_category = None
+                    if age < 35:
+                        age_category = "18-34"
+                    elif age < 51:
+                        age_category = "35-50"
+                    elif age < 66:
+                        age_category = "51-65"
+                    elif age < 81:
+                        age_category = "56-80"
+                    else:
+                        age_category = ">=81"
+
                     care_site_node = CareSite.get_or_create(
                         {
                             "site_id": str(care_site).lower()
                         }
                     )
-                    # race_node = Race.get_or_create(
-                    #     {
-                    #         "label": race.lower()
-                    #     }
-                    # )
-                    # age_node = Age.get_or_create(
-                    #     {
-                    #         "label": age.lower()
-                    #     }
-                    # )
+
                     visit_node = Visit.create_or_update(
                         {
                             "visit_id": str(visit_id).lower(),
-                            "age": age.lower(),
+                            "age": age_category,
                             "race": race.lower(),
                             "sex": sex.lower()
                         }
@@ -99,20 +133,60 @@ class SimpleGraph:
                     
                     # Connect each of the data elements to the visit node
                     visit_node[0].care_site.connect(care_site_node[0])
-                    # visit_node[0].sex.connect(sex_node[0])
-                    # visit_node[0].race.connect(race_node[0])
-                    # visit_node[0].age.connect(age_node[0])
 
                     # Add diagnosis nodes and connect to the visit
-                    for z in range(7, len(header)):
-                        if entry[z] == "1" or entry[z] == 1:
-                            icd9 = header[z].replace(".", "")
-                            cur_dx = Diagnosis.get_or_create(
-                                        {
-                                            "icd": icd9
-                                        }
-                                    )
-                            visit_node[0].dx.connect(cur_dx[0])
+                    for diagnosis in diagnoses:
+                        icd9 = diagnosis.replace(".", "")
+                        #if diagnosis_counts[icd9] >= 50:
+                        cur_dx = Diagnosis.get_or_create(
+                                    {
+                                        "icd": icd9
+                                    }
+                                )
+                        visit_node[0].dx.connect(cur_dx[0])
+
+            
+            sex_qry = "MATCH (n:Visit) RETURN COLLECT(DISTINCT n.sex) as propertyList"
+            results, meta = db.cypher_query(sex_qry)
+            values = results[0][0]
+
+            sex_enc = OneHotEncoder(handle_unknown='ignore')
+            sex_enc.fit(np.array(values).reshape(-1,1))
+
+            age_qry = "MATCH (n:Visit) RETURN COLLECT(DISTINCT n.age) as propertyList"
+            results, meta = db.cypher_query(age_qry)
+            values = results[0][0]
+
+            age_enc = OneHotEncoder(handle_unknown='ignore')
+            age_enc.fit(np.array(values).reshape(-1,1))
+
+            race_qry = "MATCH (n:Visit) RETURN COLLECT(DISTINCT n.race) as propertyList"
+            results, meta = db.cypher_query(race_qry)
+            values = results[0][0]
+
+            race_enc = OneHotEncoder(handle_unknown='ignore')
+            race_enc.fit(np.array(values).reshape(-1,1))
+
+            visits = Visit.nodes.filter()
+            for visit in visits:
+                visit.sex_encoded = sex_enc.transform([[visit.sex]]).toarray()[0].tolist()
+                visit.age_encoded = age_enc.transform([[visit.age]]).toarray()[0].tolist()
+                visit.race_encoded = race_enc.transform([[visit.race]]).toarray()[0].tolist()
+                visit.save()
+
+            diagnosis_nodes = Diagnosis.nodes.filter()
+            for diagnosis_node in diagnosis_nodes:
+                diagnosis_node.sex_encoded = sex_enc.transform([["none"]]).toarray()[0].tolist()
+                diagnosis_node.age_encoded = age_enc.transform([["none"]]).toarray()[0].tolist()
+                diagnosis_node.race_encoded = race_enc.transform([["none"]]).toarray()[0].tolist()
+                diagnosis_node.save()
+
+            care_sites = CareSite.nodes.filter()
+            for care_site in care_sites:
+                care_site.sex_encoded = sex_enc.transform([["none"]]).toarray()[0].tolist()
+                care_site.age_encoded = age_enc.transform([["none"]]).toarray()[0].tolist()
+                care_site.race_encoded = race_enc.transform([["none"]]).toarray()[0].tolist()
+                care_site.save()
 
         except Exception as ex:
             print(ex)

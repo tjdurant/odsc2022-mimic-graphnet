@@ -2,20 +2,20 @@
 # Function to train GraphSAGE using GDS library
 ####################################################
 
-def train(gds, lr=0.1, seed=42):
+def train(gds, database, lr=0.1, seed=42):
     # Remove existing embeddings if they exist
     print("Removing exisitng embeddings and model")
     gds.run_cypher("MATCH (a) REMOVE a.embedding")
 
     # Now check if the projection exists, if it does
     # delete it
-    exists = bool(gds.graph.exists("mimic")["exists"])
+    exists = bool(gds.graph.exists(f"mimic-{database}")["exists"])
     if exists:
-        G = gds.graph.get("mimic")
+        G = gds.graph.get(f"mimic-{database}")
         gds.graph.drop(G)
 
     try: # And the same for prior GraphSAGE models
-        model = gds.model.get("mimicModel")
+        model = gds.model.get(f"mimicModel-{database}")
         if model.exists():
             model.drop()
     except Exception as ex:
@@ -29,21 +29,23 @@ def train(gds, lr=0.1, seed=42):
     G = None
     try:
         G, _ = gds.graph.project(
-            'mimic',
+            f"mimic-{database}",
             #['Visit', 'Sex', 'Race', 'Diagnosis', 'CareSite', 'Age'],
             ['Visit', 'Diagnosis', 'CareSite'],
             #['age_at_visit', 'has_medical_hx', 'has_parent_dx', 'of_sex', 'visit_race', 'visit_site'],
             ['has_medical_hx', 'has_parent_dx', 'visit_site'],
+            #nodeProperties=["degree", "age_encoded", "race_encoded", "sex_encoded"]
             nodeProperties=["degree"]
         )
         print("Training with dx relationships...")
     except Exception as ex:
         G, _ = gds.graph.project(
-            'mimic',
+            f"mimic-{database}",
             #['Visit', 'Sex', 'Race', 'Diagnosis', 'CareSite', 'Age'],
             ['Visit', 'Diagnosis', 'CareSite'],
             #['age_at_visit', 'has_medical_hx', 'of_sex', 'visit_race', 'visit_site'],
             ['has_medical_hx', 'visit_site'],
+            #nodeProperties=["degree", "age_encoded", "race_encoded", "sex_encoded"]
             nodeProperties=["degree"]
         )
         print("Training with NO dx relationships...")
@@ -55,11 +57,12 @@ def train(gds, lr=0.1, seed=42):
     print("Training GraphSAGE")
     model, _ = gds.beta.graphSage.train(
         G,
-        modelName = "mimicModel",
+        modelName = f"mimicModel-{database}",
         learningRate = lr,
         epochs = 200,
         searchDepth = 40,
         randomSeed=seed,
+        #featureProperties = ["degree", "age_encoded", "race_encoded", "sex_encoded"]
         featureProperties = ["degree"]
     )
 
@@ -69,5 +72,7 @@ def train(gds, lr=0.1, seed=42):
     gds.beta.graphSage.write(
         G,
         writeProperty='embedding',
-        modelName='mimicModel'
+        modelName=f"mimicModel-{database}"
     )
+
+    return model.metrics()

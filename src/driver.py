@@ -6,16 +6,17 @@
 #####################################################
 
 import getpass
+import json
+import os
+import random
 
 from graphdatascience import GraphDataScience
 from neomodel import config
-import os
-import json
-import random
 
 from ai import (add_graph_properties, eval_forest_features,
                 eval_forest_network, train_sage)
 from neograph import simple_load
+
 
 csv_path = None
 username = None
@@ -73,20 +74,26 @@ else: # Otherwise load GraphDataScience to add network properties and train Grap
     if job == "prop": # Add computed properties to graph
         add_graph_properties.add_properties(gds)
     elif job == "sage": # Train GraphSAGE
-        train_sage.train(gds)
+        train_sage.train(gds, database)
     elif job == "tune": # Test multiple learning rates on GraphSAGE+random forest
-        lrs = [0.005, 0.01, 0.05, 0.1, 0.2]
+        lrs = [0.05, 0.1, 0.2]
         for lr in lrs:
-            train_sage.train(gds, lr)
+            train_sage.train(gds, database, lr)
             print(f"Evaluating LR of {lr}:")
             eval_forest_network.run(csv_path)
     elif job == "replicate":
-        aucs = []
+        run_metrics = {}
         for a in range(0,10):
+            print(f"Beginning run number {a}")
+            run_metrics[a] = {}
             gds = GraphDataScience(f"bolt://{host}:{port}", auth=(username, password))
             gds.set_database(database)
-            train_sage.train(gds, lr=0.1, seed=random.randint(0,20000000))
+            sage_metrics = train_sage.train(gds, database, lr=0.1, seed=random.randint(0,20000000))
+            run_metrics[a]["sage_loss"] = sage_metrics["iterationLossesPerEpoch"]
             auc = eval_forest_network.run(csv_path, seed=random.randint(0,20000000))
-            aucs.append(auc)
+            run_metrics[a]["rf_auc"] = auc
+        
         print(f"Database used: {database}")
-        print(aucs)
+        print(json.dumps(run_metrics))
+        with open(f"data/replicate-{database}.json", 'w') as metric_file:
+            metric_file.write(json.dumps(run_metrics))
