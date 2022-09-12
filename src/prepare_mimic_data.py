@@ -7,11 +7,12 @@ from pyspark.sql.functions import col
 
 # Create spark session, should load any necessary config per your environment requirements
 # spark = SparkSession("mimic-extractor")
-spark = SparkSession.builder.getOrCreate()
+spark = SparkSession.builder.getOrCreate() # use if running locally
 
 # Set base path to MIMIC data here. If driver/config loaded, will work with
 # cloud storage endpoints as well
-mimic_base_path = ""
+mimic_base_path = os.environ['MIMIC_PATH']
+
 
 icustays = spark.read.csv(os.path.join(mimic_base_path, "ICUSTAYS.csv"), header=True)
 admissions = spark.read.csv(os.path.join(mimic_base_path, "ADMISSIONS.csv"), header=True)
