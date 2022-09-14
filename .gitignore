@@ -141,6 +141,7 @@ cython_debug/
 .vscode
 data/
 mimic-posticu-los/
+data_neo4j_mimic_with_labs/
 
 # MacOS
 .DS_Store

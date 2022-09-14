@@ -20,6 +20,16 @@ class Visit(StructuredNode):
     
     care_site = RelationshipTo("CareSite", "visit_site")
     dx = RelationshipTo("Diagnosis", "has_medical_hx")
+    lx = RelationshipTo("Lab", "has_lab_hx")
+
+class Lab(StructuredNode):
+    lab_id = StringProperty(unique_index=True) # 50902_wnl / 50902_abn
+    embedding = ArrayProperty()
+
+    lab_name = StringProperty()
+    lab_mode = IntegerProperty()
+
+    child_lx = RelationshipFrom("Visit", "has_lab_hx")
 
 
 class Diagnosis(StructuredNode):

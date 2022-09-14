@@ -156,7 +156,7 @@ for lab_item_id in rothman_labid_list:
 
     # retreive the label for a given lab ITEMID
     lab_name = str(lab_items.filter(lab_items.ITEMID == lab_item_id).first()[2]).lower().replace(" ","_")
-    new_lab_column = f"{lab_name}_lab_mode"
+    new_lab_column = f"{lab_item_id}_{lab_name}"
 
     # Collect list of lab_item_id for each HADM_ID
     admit_lab_events = lab_events_int.filter((col("ITEMID") == lab_item_id)
