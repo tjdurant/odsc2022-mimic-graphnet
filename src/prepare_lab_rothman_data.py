@@ -64,7 +64,7 @@ for lab_item_id in rothman_labid_list:
     # if lab_item_id != "51300":
     #     continue
 
-    lab_name = str(lab_items.filter(lab_items.ITEMID == lab_item_id).first()[2]).lower().replace(" ","_")
+    lab_name = str(lab_items.filter(lab_items.ITEMID == lab_item_id).first()[2]).lower().replace(" ","-")
     new_lab_column = f"{lab_name}_lab_mode"
 
     admit_lab_events = lab_events_int.filter(

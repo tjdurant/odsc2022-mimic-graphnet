@@ -57,9 +57,12 @@ if database is None:
 # This sets the connection string using the neomodel library
 config.DATABASE_URL = f"bolt://{username}:{password}@{host}:{port}/{database}"
 
-job = input("What job? ").lower()
+#TODO uncomment (here for debuggin)
+# job = input("What job? ").lower()
+job = "loadnorel"
 
-if job == "loadnorel": # Load from the processed data into neo4j without dx code relationships
+# TODO change job to "loadnorel" (here for debuggin)
+if job == job: # Load from the processed data into neo4j without dx code relationships
     simple_load.SimpleGraph().run_import(csv_path)
 elif job == "loadrel": # Load from the processed data into neo4j with dx code relationships
     simple_load.SimpleGraph().run_import(csv_path, import_dx_rel=True)

@@ -16,6 +16,9 @@ import numpy as np
 
 class SimpleGraph:
     def run_import(self, csv_path, import_dx_rel = False):
+
+        first_column_of_lab_data = 9 # beginning of labs column
+
         try:
             if import_dx_rel:
                 if not os.path.exists("resources/icd9_categories.json"):
@@ -64,6 +67,15 @@ class SimpleGraph:
                     # Get field names from header
                     if i == 1:
                         header = entry
+
+                        
+                        lab_node_dict = {}
+                        li = first_column_of_lab_data # set lab column index
+                        # create dict of lab ITEMIDs and lab names with column index as key
+                        for h in header[li:]:
+                            lab_node_dict[li] = h
+                            li+=1
+
                         continue # Since header, now move on to read/process data
                     
                     diagnoses = entry[7].split(";")
@@ -86,6 +98,9 @@ class SimpleGraph:
 
                 i = 0
                 for line in tqdm(mimic_data, total=num_lines, desc="Loading data..."):
+                    
+                    tmp_lab_dict = {}
+
                     i += 1
                     # Strip newlines, remote quotes from strings, and split CSV
                     entry = line.strip().replace('"', "").split(",")
@@ -144,6 +159,39 @@ class SimpleGraph:
                                     }
                                 )
                         visit_node[0].dx.connect(cur_dx[0])
+                    
+                    li = first_column_of_lab_data
+                    # ! PLEASE NOTE: Laboratory values must be final left join when prepared in prepare_mimic_data.py for this block to work
+                    # iterate through entry columns that hold laboratory values
+                    for e in entry[li:]:
+                        
+                        # If there is no lab_mode entry, skip.
+                        if e == '':
+                            continue
+
+                        # Convert lab_mode to int
+                        tmp_lab_mode = int(float(e))
+
+                        # append Within Normal Limits (wnl) or Abnormal (abn)
+                        if tmp_lab_mode == 0:
+                            tmp_lab_dict[lab_node_dict[li]] = lab_node_dict[li] + "_wnl"
+                        if tmp_lab_mode  == 1:
+                            tmp_lab_dict[lab_node_dict[li]] = lab_node_dict[li] + "_abn"
+                    
+                        # create lab node
+                        cur_lx = Lab.get_or_create(
+                            {
+                                "lab_id": str(tmp_lab_dict[lab_node_dict[li]]).lower(),
+                                "lab_name": tmp_lab_dict[lab_node_dict[li]].split("_")[1],
+                                "lab_mode": tmp_lab_mode
+                            }
+                        )
+
+                        # connect visit node to lab node
+                        visit_node[0].lx.connect(cur_lx[0])
+
+                        li+=1
+                    
 
             
             sex_qry = "MATCH (n:Visit) RETURN COLLECT(DISTINCT n.sex) as propertyList"
@@ -189,4 +237,5 @@ class SimpleGraph:
                 care_site.save()
 
         except Exception as ex:
+            print("Here")
             print(ex)
