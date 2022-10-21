@@ -78,6 +78,8 @@ class SimpleGraph:
 
                         continue # Since header, now move on to read/process data
                     
+                    # TODO: add back connection to diagnosis codes 
+                    # TODO: may also have to link dx codes back to visit codes 
                     diagnoses = entry[7].split(";")
                     for diagnosis in diagnoses:
                         if diagnosis not in diagnosis_counts:
@@ -159,6 +161,7 @@ class SimpleGraph:
                                     }
                                 )
                         visit_node[0].dx.connect(cur_dx[0])
+
                     
                     li = first_column_of_lab_data
                     # ! PLEASE NOTE: Laboratory values must be final left join when prepared in prepare_mimic_data.py for this block to work
