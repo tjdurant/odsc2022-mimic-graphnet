@@ -151,13 +151,14 @@ pt_icu_admits_dxs = pt_icu_admits.join(
 # Create dataframe of unique HADM_ID in LABEVENTS to join with lab_modes later
 admit_lab_events_mode = lab_events.select(col("HADM_ID")).filter(col("HADM_ID").isNotNull()).distinct()
 
-# TODO: Please Note: Laboratory values must be final left join for driver.py to work
+# ! PLEASE NOTE: Laboratory values must be final left join for driver.py to work
 # iterate through list of labs and find mode for each HADM_ID
 for lab_item_id in rothman_labid_list:
 
     # retreive the label for a given lab ITEMID
     lab_name = str(lab_items.filter(lab_items.ITEMID == lab_item_id).first()[2]).lower().replace(" ","-")
-    new_lab_column = f"{lab_item_id}_{lab_name}"
+    loinc_code = str(lab_items.filter(lab_items.ITEMID == lab_item_id).first()[5])
+    new_lab_column = f"{lab_item_id}_{lab_name}_{loinc_code}"
 
     # Collect list of lab_item_id for each HADM_ID
     admit_lab_events = lab_events_int.filter((col("ITEMID") == lab_item_id)

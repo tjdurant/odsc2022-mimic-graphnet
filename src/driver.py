@@ -74,9 +74,9 @@ else: # Otherwise load GraphDataScience to add network properties and train Grap
     gds = GraphDataScience(f"bolt://{host}:{port}", auth=(username, password))
     gds.set_database(database)
 
-    if job == "prop": # Add computed properties to graph
+    if job == "prop": # Add computed properties to graph # after data is loaded, run prop
         add_graph_properties.add_properties(gds)
-    elif job == "sage": # Train GraphSAGE
+    elif job == "sage": # Train GraphSAGE # then run sage
         train_sage.train(gds, database)
     elif job == "tune": # Test multiple learning rates on GraphSAGE+random forest
         lrs = [0.05, 0.1, 0.2]
